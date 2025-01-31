@@ -1,0 +1,92 @@
+import sqlite3
+import logging
+from data import get_documents_list
+import time
+from helper import load_config
+from pinecone import Pinecone, ServerlessSpec
+
+# Configure logging
+
+def store_s3_objects_info():
+    logging.basicConfig(filename="s3_db.log", level=logging.ERROR, 
+                        format="%(asctime)s - %(levelname)s - %(message)s")
+
+    try:
+        # Connect to the database (or create it)
+        conn = sqlite3.connect("s3Object.db")
+        cursor = conn.cursor()
+
+        # Create table if not exists
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS s3_objects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            key_name TEXT UNIQUE NOT NULL,
+            last_modified TEXT NOT NULL
+        )
+        """)
+
+        # Fetch data
+        response = get_documents_list()
+        
+        if not response or 'Contents' not in response:
+            logging.warning("Response is empty or missing 'Contents' key.")
+
+        # Insert or update data
+        for obj in response.get('Contents', []):
+            key = obj['Key']
+            last_modified = obj['LastModified'].strftime('%Y-%m-%d %H:%M:%S')
+
+            try:
+                # Check if key exists
+                cursor.execute("SELECT last_modified FROM s3_objects WHERE key_name = ?", (key,))
+                existing = cursor.fetchone()
+
+                if existing:
+                    # Update if timestamp is different
+                    if existing[0] != last_modified:
+                        cursor.execute("UPDATE s3_objects SET last_modified = ? WHERE key_name = ?", 
+                                    (last_modified, key))
+                        logging.info(f"Updated: {key}")
+                else:
+                    # Insert if key is not present
+                    cursor.execute("INSERT INTO s3_objects (key_name, last_modified) VALUES (?, ?)", 
+                                (key, last_modified))
+                    logging.info(f"Inserted: {key}")
+
+            except Exception as e:
+                logging.error(f"Failed to process {key}: {e}")
+
+        # Commit changes
+        conn.commit()
+
+    except sqlite3.Error as e:
+        logging.error(f"SQLite error: {e}")
+
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+
+    finally:
+        # Close the connection safely
+        if conn:
+            conn.close()
+
+
+def pinecone_store():
+    config =load_config()
+    pinecone_api_key=config.get("PINECONE_API_KEY")
+    pc = Pinecone(api_key=pinecone_api_key)
+    index_name = "DocSynapse-S3-V1"  # change if desired
+
+    existing_indexes = [index_info["name"] for index_info in pc.list_indexes()]
+
+    if index_name not in existing_indexes:
+        pc.create_index(
+            name=index_name,
+            dimension=768,
+            metric="cosine",
+            spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+        )
+        while not pc.describe_index(index_name).status["ready"]:
+            time.sleep(1)
+
+    index = pc.Index(index_name)
