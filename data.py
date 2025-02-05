@@ -3,22 +3,16 @@ from langchain_community.document_loaders import DropboxLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 import boto3
+from langchain_pinecone import PineconeVectorStore
+from datastore import pinecone_store
 from langchain_ollama import OllamaEmbeddings
+from uuid import uuid4
 from helper import load_config
 
-def get_documents_list():
-    session = boto3.Session()  # Replace with your actual profile name
 
-# Create S3 client using the session
-    s3 = session.client('s3')
 
-# Example operation to list buckets
-    response = s3.list_objects_v2(Bucket='docsynapse-dev-stage')
-
-    return response
-
-def load_documents():
-    loader = S3FileLoader("docsynapse-dev-stage", "All Vendor list.pdf")
+def add_document_to_vector_store(key):
+    loader = S3FileLoader("docsynapse-dev-stage", key)
     documents = loader.load()
     return documents
 
@@ -39,6 +33,14 @@ def embeding():
     )
     return embed
 
-def store_pinecone():
+def store_pinecone(documents):
     config =load_config()
+    
     config.get("PINECONE_API_KEY") #TODO: STORE IN PINCEONE
+    index=pinecone_store()
+    
+
+    vector_store = PineconeVectorStore(index=index, embedding=embeding())
+    uuids = [str(uuid4()) for _ in range(len(documents))]
+
+    vector_store.add_documents(documents=documents, ids=uuids)  # Add documents to the Pinecone index

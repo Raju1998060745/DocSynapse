@@ -1,14 +1,28 @@
 import sqlite3
 import logging
-from data import get_documents_list
+import boto3
 import time
 from helper import load_config
 from pinecone import Pinecone, ServerlessSpec
+from data import add_document_to_vector_store
 
 # Configure logging
+def get_documents_list():
+    session = boto3.Session()  # Replace with your actual profile name
+
+# Create S3 client using the session
+    s3 = session.client('s3')
+
+# Example operation to list buckets
+    response = s3.list_objects_v2(Bucket='docsynapse-dev-stage')
+    
+
+    return response
+                                                          
+
 
 def store_s3_objects_info():
-    logging.basicConfig(filename="s3_db.log", level=logging.ERROR, 
+    logging.basicConfig(filename="s3_db.log", level=logging.INFO, 
                         format="%(asctime)s - %(levelname)s - %(message)s")
 
     try:
@@ -74,8 +88,9 @@ def store_s3_objects_info():
 def pinecone_store():
     config =load_config()
     pinecone_api_key=config.get("PINECONE_API_KEY")
+    print(pinecone_api_key)
     pc = Pinecone(api_key=pinecone_api_key)
-    index_name = "DocSynapse-S3-V1"  # change if desired
+    index_name = "docsynapses3v1"  # change if desired
 
     existing_indexes = [index_info["name"] for index_info in pc.list_indexes()]
 
@@ -90,3 +105,4 @@ def pinecone_store():
             time.sleep(1)
 
     index = pc.Index(index_name)
+    return index
