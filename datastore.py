@@ -2,9 +2,13 @@ import sqlite3
 import logging
 import boto3
 import time
+import uuid
 from helper import load_config
 from pinecone import Pinecone, ServerlessSpec
-from data import add_document_to_vector_store
+from data import embeding
+
+from langchain_pinecone import PineconeVectorStore
+
 
 # Configure logging
 def get_documents_list():
@@ -18,7 +22,6 @@ def get_documents_list():
     
 
     return response
-                                                          
 
 
 def store_s3_objects_info():
@@ -85,6 +88,37 @@ def store_s3_objects_info():
             conn.close()
 
 
+def create_tracking_table():
+    try:
+        # Connect to the database (or create it)
+        conn = sqlite3.connect("s3Object.db")
+        cursor = conn.cursor()
+
+        # Create table if not exists
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS doc_vector_tracking (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            docname TEXT NOT NULL,
+            vector_id TEXT UNIQUE NOT NULL,
+            FOREIGN KEY (docname) REFERENCES s3_objects(key_name)
+        )
+        """)
+
+        # Commit changes
+        conn.commit()
+
+    except sqlite3.Error as e:
+        logging.error(f"SQLite error: {e}")
+
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+
+    finally:
+        # Close the connection safely
+        if conn:
+            conn.close()
+
+
 def pinecone_store():
     config =load_config()
     pinecone_api_key=config.get("PINECONE_API_KEY")
@@ -106,3 +140,47 @@ def pinecone_store():
 
     index = pc.Index(index_name)
     return index
+
+def assign_uuid_and_store(docname, chunks):
+    logging.basicConfig(filename="s3_db.log", level=logging.INFO, 
+                        format="%(asctime)s - %(levelname)s - %(message)s")
+
+    try:
+        # Connect to the database (or create it)
+        conn = sqlite3.connect("s3Object.db")
+        cursor = conn.cursor()
+
+        # Ensure the tracking table exists
+        create_tracking_table()
+
+        # Initialize Pinecone index
+        index = pinecone_store()
+
+        for chunk in chunks:
+            vector_id = str(uuid.uuid4())
+            
+            vector_store = PineconeVectorStore(index=index, embedding=embeding())
+            vector_store.aadd_texts(texts=chunk, ids=vector_id)
+            # Store the chunk in the vector DB
+
+            # Insert the docname and vector_id into the tracking table
+            cursor.execute("""
+            INSERT INTO doc_vector_tracking (docname, vector_id) VALUES (?, ?)
+            """, (docname, vector_id))
+            logging.info(f"Inserted vector_id {vector_id} for document {docname}")
+
+        # Commit changes
+        conn.commit()
+        logging.info(f"Successfully committed changes for document {docname}")
+
+    except sqlite3.Error as e:
+        logging.error(f"SQLite error: {e}")
+
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+
+    finally:
+        # Close the connection safely
+        if conn:
+            conn.close()
+            logging.info("Database connection closed")
