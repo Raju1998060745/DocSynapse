@@ -1,1 +1,6 @@
 config.json
+.env
+credentials
+Files
+app.log
+__pycache__
