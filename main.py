@@ -1,6 +1,6 @@
 import logging
 from service.providers.aws_provider import AWSProvider
-from service.db_connect import DatabaseConnect
+from service.utils.db_connect import DatabaseConnect
 from datetime import datetime, timezone
 from dotenv import load_dotenv, set_key ,find_dotenv
 from zoneinfo import ZoneInfo
