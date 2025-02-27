@@ -4,3 +4,4 @@ credentials
 Files
 app.log
 __pycache__
+db

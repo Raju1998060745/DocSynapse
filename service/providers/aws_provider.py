@@ -3,12 +3,15 @@ import os
 from dotenv import load_dotenv
 import logging
 
+from service.utils.compare_utils import compare_last_modified
+
 logger = logging.getLogger(__name__)
 
 class AWSProvider():
     def __init__(self):
         self.session = boto3.Session()
         self.s3 = self.session.client('s3')
+        self.files =[]
 
     def list_all_files(self,bucket_name, prefix=''):
         logger.info(f"Listing files in bucket: {bucket_name} with prefix: {prefix}")
@@ -24,9 +27,10 @@ class AWSProvider():
                             'size': obj['Size'],
                             'last_modified': obj['LastModified']
                         })
+            self.files = files
             return files
         except Exception as e:
-            logger.info(f"Error listing files in bucket {bucket_name}: {str(e)}")
+            logger.error(f"Error listing files in bucket {bucket_name}: {str(e)}")
             return []
 
     def download_files(self, bucket_name, key='', local_path=None):
@@ -47,12 +51,15 @@ class AWSProvider():
                     os.makedirs(os.path.dirname(relative_path), exist_ok=True)
                     
                     self.s3.download_file(bucket_name, file_key, relative_path)
-                    logger.info(f"Downloaded {file_key} to {relative_path}")
+                    logger.debug(f"Downloaded {file_key} to {relative_path}")
             else:
                 local_file_path = os.path.join(local_path, os.path.basename(key))
                 self.s3.download_file(bucket_name, key, local_file_path)
-                logger.info(f"Downloaded {key} to {local_file_path}")
+                logger.debug(f"Downloaded {key} to {local_file_path}")
                     
         except Exception as e:
-            logger.info(f"Error downloading file(s) from bucket {bucket_name}: {str(e)}")
-
+            logger.error(f"Error downloading file(s) from bucket {bucket_name}: {str(e)}")
+            
+    def compare_files(self, previous_files=[]):
+        logger.info("Comparing files...")
+        return compare_last_modified(previous_files,self.files)
