@@ -5,11 +5,9 @@ from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
 from langchain_ollama import  OllamaEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
-
-import logging
 from uuid import uuid4
-from helper import load_config
-import os
+
+import os, glob, logging
 
 
 
@@ -20,20 +18,39 @@ import os
 
 logger =logging.getLogger(__name__)
 
-vector_store = Chroma.from_documents(docs, embedding= embeding(), persist_directory=os.path.join(db_path,"chroma_db") )
 
-def load_document(filepath ='Files'):
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    docsynapse_root = os.path.abspath(os.path.join(current_dir, '..', '..', '..'))
-    files_dir = os.path.join(docsynapse_root, filepath)
-    if not os.path.exists(files_dir):
-        logger.Error(f"Directory {files_dir} does not exist.")
+def load_document(files_dir =""):
+    
+    if files_dir =="":
+        files_dir = os.getenv('FILE_DOWNLOAD_PATH') 
+    
+    
+    
+    pdf_files = glob.glob(os.path.join(files_dir, "*.pdf"))
+    if not pdf_files:
+        logger.error(f"No PDF files found in {files_dir}")
+        return None
+
+    all_documents = []
+    for pdf_file in pdf_files:
+        try:
+            loader = PyPDFLoader(pdf_file)
+            documents = loader.load()
+            all_documents.extend(documents)
+            logger.info(f"Successfully loaded {pdf_file}")
+        except Exception as e:
+            logger.error(f"Error loading {pdf_file}: {e}")
+    
+    return all_documents
+
+def load_and_split_documents(filepath):
+    documents = load_document(filepath)
+    if not documents:
+        logger.error("No documents found to load.")
         return None
     else:
-        loader = PyPDFLoader(files_dir)
-        documents = loader.load()
-        return documents 
-
+        split_docs = split_documents(documents)
+        return split_docs
 
 def split_documents(documents: list[Document]):
     text_splitter = RecursiveCharacterTextSplitter(

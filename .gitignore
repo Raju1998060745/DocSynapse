@@ -5,3 +5,4 @@ Files
 app.log
 __pycache__
 db
+**/*.log
