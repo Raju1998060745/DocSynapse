@@ -1,0 +1,85 @@
+<!-- templates/chat.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat - DocSynapse</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body class="flex flex-col h-screen max-h-screen bg-slate-50">
+    <!-- Chat header -->
+    <div class="p-4 bg-indigo-800 text-white shadow-lg">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-xl font-bold">DocSynapse</h1>
+                <p class="text-xs text-indigo-200">Welcome, {{ current_user.username }}</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="{{ url_for('home') }}" class="bg-indigo-700 hover:bg-indigo-600 p-2 rounded-md flex items-center">
+                    <i data-feather="home" class="text-indigo-100" width="20"></i>
+                </a>
+                <a href="{{ url_for('logout') }}" class="bg-indigo-700 hover:bg-indigo-600 p-2 rounded-md flex items-center">
+                    <i data-feather="log-out" class="text-indigo-100" width="20"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Messages container -->
+    <div id="messages-container" class="flex-1 p-4 overflow-y-auto bg-slate-50">
+        <!-- Messages will be added here dynamically -->
+    </div>
+    
+    <!-- File preview area -->
+    <div id="file-preview" class="p-3 border-t border-slate-200 bg-white max-h-24 overflow-y-auto hidden">
+        <p class="text-xs text-slate-500 mb-2 font-medium">Files to upload:</p>
+        <div id="file-list" class="flex flex-wrap gap-2">
+            <!-- Files will be added here dynamically -->
+        </div>
+    </div>
+    
+    <!-- Input area -->
+    <div class="p-4 border-t border-slate-200 bg-white shadow-inner">
+        <div class="flex items-end rounded-full border border-slate-300 bg-white shadow-sm w-full overflow-hidden">
+            <div class="flex items-center w-full px-4 py-2">
+                <textarea
+                    id="message-input"
+                    class="flex-1 outline-none resize-none max-h-32 text-slate-700 text-sm min-h-8"
+                    rows="1"
+                    placeholder="Type your message..."
+                ></textarea>
+                <div class="flex items-center ml-2">
+                    <button 
+                        id="attachment-btn"
+                        class="text-slate-400 hover:text-indigo-600 transition-colors p-2"
+                    >
+                        <i data-feather="paperclip" width="18"></i>
+                    </button>
+                    <button
+                        id="send-btn"
+                        class="p-2 rounded-full ml-1 bg-slate-200 text-slate-400"
+                    >
+                        <i data-feather="send" width="16"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <input
+            type="file"
+            id="file-input"
+            multiple
+            class="hidden"
+        />
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        // Initialize feather icons
+        feather.replace();
+    </script>
+</body>
+</html>
+</antArtifact
