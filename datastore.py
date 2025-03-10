@@ -184,3 +184,4 @@ def assign_uuid_and_store(docname, chunks):
         if conn:
             conn.close()
             logging.info("Database connection closed")
+

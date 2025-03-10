@@ -4,8 +4,13 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import os
+from langchain.schema import AIMessage
+
+from langchain_groq import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import uuid
 import datetime
+import requests
 import json
 import logging
 from logging.handlers import RotatingFileHandler
@@ -134,7 +139,7 @@ def register():
         # Now that we have a valid user ID, add the welcome message
         welcome_message = Message(
             text="Hello! How can I help you today?",
-            sender="bot",
+            sender="ai",
             user_id=user.id
         )
         db.session.add(welcome_message)
@@ -237,7 +242,7 @@ def handle_messages():
         # Add user message to database
         user_message = Message(
             text=message_text,
-            sender="user",
+            sender="human",
             user_id=current_user.id
         )
         db.session.add(user_message)
@@ -254,12 +259,33 @@ def handle_messages():
         
         # Generate bot response
         app.logger.info(f'Generating bot response for message: {message_text[:50]}{"..." if len(message_text) > 50 else ""}')
-        bot_response_text = generate_response(message_text)
-        bot_message = Message(
-            text=bot_response_text,
-            sender="bot",
-            user_id=current_user.id
+        messagess = Message.query.filter_by(user_id=current_user.id).order_by(Message.timestamp).all()
+        message_list = []
+        for message in messagess:
+            files_data = []
+            for file in message.files:
+                files_data.append({
+                    "id": file.file_id,
+                    "name": file.filename
+                })
+                
+            message_list.append({
+                "sender": message.sender,
+                "text": message.text
+                
+            })
+        formatted_messages = [{msg['sender']: msg['text']} for msg in message_list]
+        print(formatted_messages)
+        bot_response_text = generate_response(message=message_text,messages=formatted_messages)
+        if isinstance(bot_response_text, AIMessage):
+            bot_response_text = bot_response_text.content  # Extract actual text
+
+        bot_message= Message(
+        text=bot_response_text,  # Now it's a plain string
+        sender="ai",
+        user_id=current_user.id
         )
+
         db.session.add(bot_message)
         db.session.commit()
         
@@ -269,7 +295,7 @@ def handle_messages():
         bot_response = {
             "id": bot_message.id,
             "text": bot_message.text,
-            "sender": "bot",
+            "sender": "ai",
             "timestamp": bot_message.timestamp.isoformat(),
             "files": []
         }
@@ -304,6 +330,19 @@ def upload_files():
                     user_id=current_user.id,
                     message_id=0  # Will be updated when message is sent
                 )
+
+                send={
+                    "filename": file_record.filename,
+                    "file_id": file_record.file_id,
+                    "user_id": file_record.user_id,
+
+                    }
+                print(file_record.filename + " " + file_record.file_id + " " + str(file_record.user_id))
+
+                response = requests.post("http://127.0.0.1:5001/embed", json=send)
+
+                print("Response:", response.json())
+                
                 db.session.add(file_record)
                 file_ids.append(file_id)
                 
@@ -314,21 +353,20 @@ def upload_files():
     app.logger.info(f'File upload completed for user: {current_user.username}, files saved: {len(file_ids)}')
     return jsonify({"fileIds": file_ids})
 
-def generate_response(message):
-    """Simple response generator. Replace with AI integration if needed."""
-    message = message.lower()
-    if "hello" in message or "hi" in message:
-        return "Hello! How can I assist you today?"
-    elif "help" in message:
-        return "I'm here to help. What do you need assistance with?"
-    elif "file" in message:
-        return "I see you're interested in files. You can upload files using the attachment button."
-    elif "bye" in message or "goodbye" in message:
-        return "Goodbye! Feel free to come back if you have more questions."
-    elif "thank" in message:
-        return "You're welcome! I'm glad I could be of assistance."
-    else:
-        return "Thanks for your message! I've received it and will process it accordingly."
+def generate_response(message,messages):
+
+    llms = ChatGroq(temperature=0, groq_api_key="", model_name="mixtral-8x7b-32768")
+    history=messages
+    prompt = ChatPromptTemplate.from_messages(
+    [
+        ("ai","You are a helpful assistant"),
+        # MessagesPlaceholder("{history}"),
+        ("human", "{message}"),
+    ]
+    )
+    chain= prompt | llms
+    response=chain.invoke(message)
+    return response
 
 @app.errorhandler(404)
 def not_found_error(error):

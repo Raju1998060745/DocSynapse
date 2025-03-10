@@ -191,10 +191,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function appendMessage(message) {
         const messageElement = document.createElement('div');
-        messageElement.className = `mb-4 flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`;
+        messageElement.className = `mb-4 flex ${message.sender === 'human' ? 'justify-end' : 'justify-start'}`;
         
         let avatarHtml = '';
-        if (message.sender === 'bot') {
+        if (message.sender === 'ai') {
             avatarHtml = `
                 <div class="h-8 w-8 rounded-full bg-indigo-800 flex items-center justify-center mr-2 mt-1">
                     <span class="text-white text-xs font-semibold">AI</span>
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
         }
         
-        let messageClass = message.sender === 'user' 
+        let messageClass = message.sender === 'human' 
             ? 'bg-indigo-700 text-white rounded-tr-none' 
             : message.isError 
                 ? 'bg-red-50 text-red-800 border border-red-200 rounded-tl-none'
@@ -212,12 +212,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (message.files && message.files.length > 0) {
             fileAttachmentsHtml = `
                 <div class="mt-2 text-xs">
-                    <p class="font-semibold ${message.sender === 'user' ? 'text-indigo-200' : 'text-indigo-800'}">
+                    <p class="font-semibold ${message.sender === 'human' ? 'text-indigo-200' : 'text-indigo-800'}">
                         Attached files:
                     </p>
                     <ul class="mt-1">
                         ${message.files.map(file => `
-                            <li class="${message.sender === 'user' ? 'text-indigo-100' : 'text-slate-600'}">
+                            <li class="${message.sender === 'human' ? 'text-indigo-100' : 'text-slate-600'}">
                                 ${file.name || 'File'}
                             </li>
                         `).join('')}
@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         let userAvatarHtml = '';
-        if (message.sender === 'user') {
+        if (message.sender === 'human') {
             userAvatarHtml = `
                 <div class="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center ml-2 mt-1">
                     <span class="text-white text-xs font-semibold">You</span>
