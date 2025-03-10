@@ -20,17 +20,16 @@ logger =logging.getLogger(__name__)
 
 
 def load_document(files_dir =""):
+    '''
+    Load document with file path
     
+    '''
     if files_dir =="":
         files_dir = os.getenv('FILE_DOWNLOAD_PATH') 
-    
-    
-    
     pdf_files = glob.glob(os.path.join(files_dir, "*.pdf"))
     if not pdf_files:
         logger.error(f"No PDF files found in {files_dir}")
         return None
-
     all_documents = []
     for pdf_file in pdf_files:
         try:
@@ -44,6 +43,12 @@ def load_document(files_dir =""):
     return all_documents
 
 def load_and_split_documents(filepath):
+
+    '''
+    Load AND Split document with file path
+    
+    '''
+
     documents = load_document(filepath)
     if not documents:
         logger.error("No documents found to load.")
@@ -53,6 +58,11 @@ def load_and_split_documents(filepath):
         return split_docs
 
 def split_documents(documents: list[Document]):
+    '''
+    Split document with file path
+    
+    '''
+
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
         chunk_overlap=150,
@@ -60,6 +70,9 @@ def split_documents(documents: list[Document]):
         is_separator_regex=False,
     )
     return text_splitter.split_documents(documents)
+
+
+
 
 
 def embeding():
