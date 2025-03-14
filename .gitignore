@@ -1,1 +1,9 @@
 config.json
+.env
+credentials
+Files
+__pycache__
+db
+**/*.log
+dockerfile
+.dockerignore
