@@ -11,20 +11,13 @@ from .. import logger
 
 
 
-def load_document(files_dir =""):
+def load_document(pdf_files : list ):
     '''
+    TODO: Make it private
     Load document with file path
     '''
     try :
-        if files_dir =="":
-            files_dir = os.getenv('FILE_DOWNLOAD_PATH') 
-        elif not os.path.exists(files_dir):
-            raise FileNotFoundError(f'File Path {files_dir} does not exists')
-
-        pdf_files = glob.glob(os.path.join(files_dir, "*.pdf"))
-        if not pdf_files:
-            logger.error(f"No PDF files found in {files_dir}")
-            return None
+        
         all_documents = []
         for pdf_file in pdf_files:
             try:
@@ -40,12 +33,12 @@ def load_document(files_dir =""):
         return e
 
 
-def load_and_split_documents(filepath):
+def load_and_split_documents( pdf_files: list):
     '''
     Load AND Split document with file path
     '''
     try:
-        documents = load_document(filepath)
+        documents = load_document(pdf_files)
         if not documents:
             logger.error("No documents found to load.")
             raise ValueError("No documents found to load.")
@@ -56,20 +49,32 @@ def load_and_split_documents(filepath):
         return e
     except ValueError as e:
         return e
+    except Exception as e:
+        return e
 
 
 def split_documents(documents: list[Document]):
     '''
+    TODO: Make it private
     Split document with file path  
     '''
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=400,
-        chunk_overlap=100,
-        length_function=len,
-        is_separator_regex=False,
-    )
-    return text_splitter.split_documents(documents)
+    try :
 
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=400,
+            chunk_overlap=100,
+            length_function=len,
+            is_separator_regex=False,
+        )
+        return text_splitter.split_documents(documents)
+
+    except FileNotFoundError as e:
+        return e
+    except ValueError as e:
+        return e
+    except Exception as e:
+        return e
+    
 
 def embeding():
     embed = OllamaEmbeddings(
