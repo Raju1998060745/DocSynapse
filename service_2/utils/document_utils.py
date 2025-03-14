@@ -7,7 +7,7 @@ from langchain_ollama import  OllamaEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from uuid import uuid4
 import os, glob
-from service_2 import logger
+from .. import logger
 
 
 
@@ -48,11 +48,13 @@ def load_and_split_documents(filepath):
         documents = load_document(filepath)
         if not documents:
             logger.error("No documents found to load.")
-            return None
+            raise ValueError("No documents found to load.")
         else:
             split_docs = split_documents(documents)
             return split_docs
     except FileNotFoundError as e:
+        return e
+    except ValueError as e:
         return e
 
 
@@ -61,8 +63,8 @@ def split_documents(documents: list[Document]):
     Split document with file path  
     '''
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=150,
+        chunk_size=400,
+        chunk_overlap=100,
         length_function=len,
         is_separator_regex=False,
     )
