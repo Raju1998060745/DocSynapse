@@ -68,11 +68,6 @@ document.addEventListener('DOMContentLoaded', function() {
         let fileIds = [];
         
         try {
-            // Upload files first if any
-            if (filesToUpload.length > 0) {
-                fileIds = await uploadFiles(filesToUpload);
-            }
-            
             // Send message with file references
             const response = await fetch('/api/messages', {
                 method: 'POST',
@@ -107,15 +102,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    async function uploadFiles(files) {
-        if (!files || files.length === 0) return [];
-        
-        const formData = new FormData();
-        files.forEach(file => {
-            formData.append('files', file);
-        });
+    async function handleUploadConfirmation() {
+        if (filesToUpload.length === 0) return;
         
         try {
+            // Show loading state
+            const uploadButton = document.getElementById('upload-confirm-btn');
+            if (uploadButton) {
+                uploadButton.disabled = true;
+                uploadButton.innerHTML = `
+                    <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Uploading...
+                `;
+            }
+            
+            const formData = new FormData();
+            filesToUpload.forEach(file => {
+                formData.append('files', file);
+            });
+            
             const response = await fetch('/api/files/upload', {
                 method: 'POST',
                 body: formData
@@ -126,9 +134,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             const data = await response.json();
+            
+            // Show success message
+            showSuccessMessage(`${filesToUpload.length} file(s) uploaded successfully`);
+            
+            // Clear file preview
+            clearFilePreview();
+            
             return data.fileIds || [];
         } catch (error) {
             console.error('Error uploading files:', error);
+            showErrorMessage('Failed to upload files. Please try again.');
             return [];
         }
     }
@@ -152,6 +168,10 @@ document.addEventListener('DOMContentLoaded', function() {
         filePreview.classList.remove('hidden');
         fileList.innerHTML = '';
         
+        // Container for file items
+        const filesContainer = document.createElement('div');
+        filesContainer.className = 'flex flex-wrap gap-2 mb-2';
+        
         filesToUpload.forEach((file, index) => {
             const fileElement = document.createElement('div');
             fileElement.className = 'flex items-center bg-slate-100 rounded-full px-3 py-1';
@@ -161,8 +181,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     <i data-feather="trash-2" width="14"></i>
                 </button>
             `;
-            fileList.appendChild(fileElement);
+            filesContainer.appendChild(fileElement);
         });
+        
+        fileList.appendChild(filesContainer);
+        
+        // Add upload confirmation button
+        const uploadButton = document.createElement('div');
+        uploadButton.className = 'flex justify-end';
+        uploadButton.innerHTML = `
+            <button id="upload-confirm-btn" class="bg-indigo-700 hover:bg-indigo-800 text-white text-xs px-4 py-2 rounded-md flex items-center">
+                <i data-feather="upload-cloud" width="14" class="mr-2"></i>
+                Upload Files
+            </button>
+        `;
+        fileList.appendChild(uploadButton);
         
         // Reinitialize Feather icons
         feather.replace();
@@ -174,6 +207,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 removeFile(index);
             });
         });
+        
+        // Add event listener to upload confirmation button
+        document.getElementById('upload-confirm-btn').addEventListener('click', handleUploadConfirmation);
         
         updateSendButton();
     }
@@ -206,7 +242,9 @@ document.addEventListener('DOMContentLoaded', function() {
             ? 'bg-indigo-700 text-white rounded-tr-none' 
             : message.isError 
                 ? 'bg-red-50 text-red-800 border border-red-200 rounded-tl-none'
-                : 'bg-white text-slate-800 rounded-tl-none border border-slate-200';
+                : message.isSuccess
+                    ? 'bg-green-50 text-green-800 border border-green-200 rounded-tl-none'
+                    : 'bg-white text-slate-800 rounded-tl-none border border-slate-200';
         
         let fileAttachmentsHtml = '';
         if (message.files && message.files.length > 0) {
