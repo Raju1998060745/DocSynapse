@@ -1,9 +1,10 @@
 import logging
-def setup_logging():
+
+def setup_logger():
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
 
-    file_handler = logging.FileHandler("service_2.log")
+    file_handler = logging.FileHandler("logs/service_2.log")
     file_handler.setLevel(logging.DEBUG)
     file_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     file_handler.setFormatter(file_formatter)
@@ -15,3 +16,4 @@ def setup_logging():
 
     logger.addHandler(file_handler)
     logger.addHandler(stream_handler)
+    return logger
