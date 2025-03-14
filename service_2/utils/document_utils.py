@@ -24,9 +24,8 @@ def load_document(files_dir =""):
     if files_dir =="":
         files_dir = os.getenv('FILE_DOWNLOAD_PATH') 
     
-    
-    
     pdf_files = glob.glob(os.path.join(files_dir, "*.pdf"))
+    print(pdf_files)
     if not pdf_files:
         logger.error(f"No PDF files found in {files_dir}")
         return None
@@ -75,3 +74,5 @@ def embeding():
     
 
 #       # Add documents to the Pinecone index
+
+t=load_document()

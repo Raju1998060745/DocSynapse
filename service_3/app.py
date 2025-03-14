@@ -5,7 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import os
 from langchain.schema import AIMessage
-
+import time
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import uuid
@@ -276,9 +276,10 @@ def handle_messages():
             })
         formatted_messages = [{msg['sender']: msg['text']} for msg in message_list]
         print(formatted_messages)
-        bot_response_text = generate_response(message=message_text,messages=formatted_messages)
-        if isinstance(bot_response_text, AIMessage):
-            bot_response_text = bot_response_text.content  # Extract actual text
+        bot_response_text = generate_response(current_user.username,message_text)
+        print(bot_response_text)
+        # if isinstance(bot_response_text, AIMessage):
+        #     bot_response_text = bot_response_text.content  # Extract actual text
 
         bot_message= Message(
         text=bot_response_text,  # Now it's a plain string
@@ -317,7 +318,7 @@ def upload_files():
         if file:
             filename = secure_filename(file.filename)
             file_id = str(uuid.uuid4())
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{file_id}_{filename}")
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}")
             
             try:
                 file.save(file_path)
@@ -332,17 +333,15 @@ def upload_files():
                 )
 
                 send={
-                    "filename": file_record.filename,
-                    "file_id": file_record.file_id,
-                    "user_id": file_record.user_id,
+                    "filename": filename,
+                    "user":current_user.username
 
                     }
                 print(file_record.filename + " " + file_record.file_id + " " + str(file_record.user_id))
-
-                response = requests.post("http://127.0.0.1:5001/embed", json=send)
-
-                print("Response:", response.json())
-                
+                print("Waiting for 3 seconds before sending...")
+                time.sleep(3)
+                response = requests.post("http://localhost:5001/api/files/upload", json=send)
+                content = response.json() 
                 db.session.add(file_record)
                 file_ids.append(file_id)
                 
@@ -353,20 +352,15 @@ def upload_files():
     app.logger.info(f'File upload completed for user: {current_user.username}, files saved: {len(file_ids)}')
     return jsonify({"fileIds": file_ids})
 
-def generate_response(message,messages):
-
-    llms = ChatGroq(temperature=0, groq_api_key="", model_name="mixtral-8x7b-32768")
-    history=messages
-    prompt = ChatPromptTemplate.from_messages(
-    [
-        ("ai","You are a helpful assistant"),
-        # MessagesPlaceholder("{history}"),
-        ("human", "{message}"),
-    ]
-    )
-    chain= prompt | llms
-    response=chain.invoke(message)
-    return response
+def generate_response(user,message_text):
+    send={
+            "user": user,
+            "text": message_text,
+         }
+    response = requests.post("http://localhost:5001/api/messages", json=send)
+    content = response.json()  # Parse the JSON response
+    response_text = content['response']
+    return response_text
 
 @app.errorhandler(404)
 def not_found_error(error):
