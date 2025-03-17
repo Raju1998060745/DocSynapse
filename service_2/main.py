@@ -12,9 +12,9 @@ import logging
 
 
 from service_2.api.user_routes import embed_files
+from service_2.core.exceptions import DocumentLoadError, DocumentProcessingError, VectorStoreError
 
 logger = logging.getLogger(__name__)
-
 
 
 app = FastAPI()
@@ -34,33 +34,34 @@ class FileUploadRequest(BaseModel):
 @app.post('/api/files/upload')
 async def upload_text(data: FileUploadRequest):
     try:
-        # Extract text and filename
-        filename = data.filename
-        user = data.user
-        file_dir = data.fileDirectory or None
-       
-        if not filename:
-            logger.error("No filename provided")
+        # Validate request data
+        if not data.filename:
             raise HTTPException(status_code=400, detail="Filename is required")
+        if not data.user:
+            raise HTTPException(status_code=400, detail="User is required")
 
-        if not user:
-            logger.error("No username provided")
-            raise HTTPException(status_code=400, detail="Username is required")
-       
-        # Process the text data
-
-        message = embed_files(user_id= user, file_names= filename,files_dir=file_dir )
-
-        
-        # logger.info(f"Text content from {filename} processed for user {user}")
-        
-        return ({
-            "response": f"{message}"
-        })
-           
+        # Process files
+        try:
+            message = embed_files(
+                user_id=data.user,
+                file_names=data.filename,
+                files_dir=data.fileDirectory
+            )
+            return {"response": message}
+            
+        except DocumentLoadError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except DocumentProcessingError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+            
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error processing text content: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error processing text: {str(e)}")
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail="An unexpected error occurred"
+        )
 
  
 
@@ -89,4 +90,3 @@ async def upload_text(data: FileUploadRequest):
 #     except Exception as e:
 #         logger.error(f"Error processing request: {str(e)}")
 #         return jsonify({"error": "Internal Server Error"}), 500
- 

@@ -1,8 +1,10 @@
+from langchain_ollama import OllamaEmbeddings
 from service_2.core.process import load_and_split_documents, embeding
-import os,glob
+import os, glob
+from langchain.schema import Document
 from .. import logger
 from langchain_chroma import Chroma
-
+import chromadb
  
 
 def rag_pull():
@@ -47,22 +49,19 @@ def embed_files(user_id: str, file_names :list[str] =None, files_dir: str = None
         # embeding = embeding()
 
     # add metadata 
-        map(lambda doc : doc.metadata.update({'user_id':user_id}),documents )
+        [doc.metadata.update({'user_id': user_id}) for doc in documents]
 
-    # store to DB
-        db_path =  os.getenv('DB_PATH') or 'service_2/db/chroma.db'
-        db = Chroma(persist_directory=db_path, embedding_function=embeding(), collection_name=user_id)
-        db.from_documents(documents)      
 
-    # return Success
+    # store to DB        
+        chroma_db_init(collection=user_id,documents= documents)
+        # return Success
         response = {
             'message': f"Successfully processed {len(pdf_files)} files.",
             'processed_files' : repr(pdf_files)
         }
         if missing_files:
             response['missing_files'] = repr(missing_files)
-        
-            
+    
         return (response)
 
     except FileNotFoundError as e:
@@ -71,7 +70,18 @@ def embed_files(user_id: str, file_names :list[str] =None, files_dir: str = None
         return e
     
 
-
+def chroma_db_init(collection: str, documents: list[Document]):
+    try:
+        db_path =  os.getenv('DB_PATH') or 'service_2/db/chroma.db' 
+        persistent_client = chromadb.PersistentClient(db_path)
+        collection = persistent_client.get_or_create_collection(collection, embedding_function= OllamaEmbeddings(
+        model="nomic-embed-text"
+    ))
+        collection.add(documents)
+        return True
+    except Exception as e:
+        raise RuntimeError(f"Failed to Load into Chrom db {str(e)}")
+        
 
     
     

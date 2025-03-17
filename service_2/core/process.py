@@ -8,13 +8,13 @@ from langchain_community.document_loaders import PyPDFLoader
 from uuid import uuid4
 import os, glob
 from .. import logger
-
+from service_2.core.exceptions import DocumentLoadError, DocumentProcessingError, DocumentSplitError
 
 
 def load_document(pdf_files : list ):
     '''
     TODO: Make it private
-    Load document with file path
+Load document with file path
     '''
     try :
         
@@ -26,11 +26,15 @@ def load_document(pdf_files : list ):
                 all_documents.extend(documents)
                 logger.info(f"Successfully loaded {pdf_file}")
             except Exception as e:
-                logger.error(f"Error loading {pdf_file}: {e}")
+                logger.error(f"Error loading {pdf_file}: {str(e)}")
+                raise DocumentLoadError(f"Failed to load {pdf_file}: {str(e)}")
         return all_documents
-    except FileNotFoundError as e:
-        logger.error(e)
-        return e
+    except DocumentLoadError as e:
+        logger.error(f"Document loading failed: {str(e)}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in load_document: {str(e)}")
+        raise DocumentProcessingError(f"Unexpected error: {str(e)}")
 
 
 def load_and_split_documents( pdf_files: list):
@@ -66,14 +70,18 @@ def split_documents(documents: list[Document]):
             length_function=len,
             is_separator_regex=False,
         )
-        return text_splitter.split_documents(documents)
-
+        docs =text_splitter.split_documents(documents)
+        if not docs:
+            raise DocumentSplitError(f"Failed to SPlit Documents{uuid4()}: {str(e)}")
+        return docs
+    except DocumentSplitError as e:
+        raise
     except FileNotFoundError as e:
-        return e
+        raise
     except ValueError as e:
-        return e
+        raise
     except Exception as e:
-        return e
+        raise DocumentSplitError(f"Failed to SPlit Documents {uuid4()}: {str(e)}")
     
 
 def embeding():
