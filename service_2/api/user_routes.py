@@ -5,72 +5,147 @@ from langchain.schema import Document
 from .. import logger
 from langchain_chroma import Chroma
 import chromadb
- 
+from service_2.core.exceptions import *
 
-def rag_pull():
-    '''
-    retreive from related Vector store 
-    '''
-    # connect to db
-    #  pull content 
-    # return content
+
+def Call_to_LLM():
+    '''TODO: Call chroma as retreiver and then call llm for ans'''
     pass
 
-
-
-def embed_files(user_id: str, file_names :list[str] =None, files_dir: str = None):
-    '''
-    Load to related vectore store
-    '''
-    # check for file location and files
-    try :
-        if files_dir == None:
-            files_dir = os.getenv('FILE_DOWNLOAD_PATH') 
-            if not os.path.exists(files_dir):
-                raise FileNotFoundError(f'File Directory {files_dir} does not exists')
-        pdf_files= []
-        missing_files =[]
-        for i in file_names:
-            if not os.path.exists(os.path.join(files_dir, f"{i}.pdf")):
-                print(os.path.exists(os.path.join(files_dir, f"{i}.pdf")))
-                missing_files.append(i)
-                logger.debug(f"File not found {i}")
-            else :
-                pdf_files.append(os.path.join(files_dir, f"{i}.pdf"))
-        if not pdf_files:
-            raise FileNotFoundError(f'Files {repr(file_names)} does not exists')
-            
-
-    # load and split
-
-        documents = load_and_split_documents(pdf_files= pdf_files)
-
-    # download embedding()
-        # embeding = embeding()
-
-    # add metadata 
-        [doc.metadata.update({'user_id': user_id}) for doc in documents]
-
-
-    # store to DB        
-        chroma_db_init(collection=user_id,documents= documents)
-        # return Success
-        response = {
-            'message': f"Successfully processed {len(pdf_files)} files.",
-            'processed_files' : repr(pdf_files)
-        }
-        if missing_files:
-            response['missing_files'] = repr(missing_files)
+def rag_pull(user_id: str, query: str, k: int = 2):
+    """
+    Retrieve documents from vector store
     
-        return (response)
-
-    except FileNotFoundError as e:
-        return e
+    Args:
+        user_id (str): User identifier
+        query (str): Search query
+        k (int): Number of results to return
+        
+    Returns:
+        list: Matching documents
+        
+    Raises:
+        ChromaDBError: If retrieval fails
+    """
+    try:
+        collection = chroma_db_init(collection=user_id)
+        results = collection.similarity_search(
+            query=query, 
+            k=k
+        )
+        return results
+        
     except Exception as e:
-        return e
-    
+        logger.error(f"RAG pull failed: {str(e)}")
+        raise ChromaDBError(f"Failed to retrieve documents: {str(e)}")
 
-def chroma_db_init(collection: str, documents: list[Document]):
+def rag_pull_with_filter(user_id: str, query: str, document_name: str = None, k: int = 2):
+    """
+    Retrieve filtered documents from vector store
+    
+    Args:
+        user_id (str): User identifier
+        query (str): Search query
+        document_name (str, optional): Document name to filter by
+        k (int): Number of results to return
+        
+    Returns:
+        list: Matching documents
+    """
+    try:
+        collection = chroma_db_init(collection=user_id)
+        filter_dict = {'user_id': user_id}
+        
+        if document_name:
+            filter_dict['source'] = document_name
+            
+        results = collection.similarity_search(
+            query=query,
+            k=k,
+            filter=filter_dict
+        )
+        return results
+        
+    except Exception as e:
+        logger.error(f"RAG pull with filter failed: {str(e)}")
+        raise ChromaDBError(f"Failed to retrieve filtered documents: {str(e)}")
+
+
+def embed_files(user_id: str, file_names: list[str] = None, files_dir: str = None) -> dict:
+    """
+    Load and embed documents into vector store
+    
+    Args:
+        user_id (str): User identifier
+        file_names (list[str]): List of file names to process
+        files_dir (str, optional): Directory containing files
+        
+    Returns:
+        dict: Processing results
+        
+    Raises:
+        FileNotFoundError: If files or directory not found
+        ChromaDBError: If embedding or storage fails
+    """
+    try:
+        # Validate inputs
+        if not user_id or not file_names:
+            raise ValueError("User ID and file names are required")
+            
+        files_dir = files_dir or os.getenv('FILE_DOWNLOAD_PATH')
+        if not os.path.exists(files_dir):
+            raise FileNotFoundError(f'Directory not found: {files_dir}')
+            
+        # Process files
+        pdf_files = []
+        missing_files = []
+        
+        for filename in file_names:
+            file_path = os.path.join(files_dir, f"{filename}.pdf")
+            if os.path.exists(file_path):
+                pdf_files.append(file_path)
+            else:
+                missing_files.append(filename)
+                logger.warning(f"File not found: {filename}")
+                
+        if not pdf_files:
+            raise FileNotFoundError(f'No valid files found from: {file_names}')
+            
+        # Load and process documents
+        documents = load_and_split_documents(pdf_files=pdf_files)
+        
+        # Add metadata
+        for doc in documents:
+            doc.metadata.update({
+                'user_id': user_id,
+                'processed_date': datetime.now().isoformat()
+            })
+            
+        # Store in ChromaDB
+        collection = chroma_db_init(collection=user_id)
+        collection.add_documents(documents)
+        
+        # Prepare response
+        response = {
+            'status': 'success',
+            'message': f"Successfully processed {len(pdf_files)} files",
+            'processed_files': pdf_files,
+            'document_count': len(documents)
+        }
+        
+        if missing_files:
+            response['missing_files'] = missing_files
+            
+        return response
+        
+    except (FileNotFoundError, ValueError) as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise
+    except Exception as e:
+        logger.error(f"Processing error: {str(e)}")
+        raise ChromaDBError(f"Document processing failed: {str(e)}")
+
+def chroma_db_init(collection: str):
     try:
         db_path =  os.getenv('DB_PATH') or 'service_2/db/chroma.db' 
         # persistent_client = chromadb.PersistentClient(db_path)
@@ -80,17 +155,17 @@ def chroma_db_init(collection: str, documents: list[Document]):
         persist_directory=db_path,
         embedding_function=OllamaEmbeddings(model="nomic-embed-text"),
         collection_name=collection)
-        
-        db.add_documents(documents)
-    
-        
-        return True
-    except Exception as e:
-        raise RuntimeError(f"Failed to Load into Chrom db {str(e)}")
-        
 
+        
     
-    
-    
+        
+        return db
+    except Exception as e:
+        raise RuntimeError(f"Failed to connect into Chrom db {str(e)}")
+
+
+
+
+
 
 
