@@ -17,3 +17,15 @@ class EmbeddingError(DocumentProcessingError):
 class VectorStoreError(DocumentProcessingError):
     """Raised when vector store operations fail"""
     pass
+
+class ChromaDBError(Exception):
+    """Base exception for ChromaDB operations"""
+    pass
+
+class DocumentNotFoundError(ChromaDBError):
+    """Raised when documents are not found"""
+    pass
+
+class EmbeddingError(ChromaDBError):
+    """Raised when embedding operations fail"""
+    pass

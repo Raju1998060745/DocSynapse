@@ -11,7 +11,7 @@ from langchain_ollama import OllamaEmbeddings
 import logging
 
 
-from service_2.api.user_routes import embed_files
+from service_2.api.user_routes import embed_files, rag_pull, rag_pull_with_filter
 from service_2.core.exceptions import DocumentLoadError, DocumentProcessingError, VectorStoreError
 
 logger = logging.getLogger(__name__)
@@ -21,33 +21,42 @@ app = FastAPI()
 
 
 @app.get("/home")
-async def index( filename : str):
-   return {"message": "Hello Worldhi "}
+async def index( ):
+   return {"message": f"Hello Worldhi"}
 
 
 class FileUploadRequest(BaseModel):
     filename: list[str]
     user: str
     fileDirectory: str | None = None
+    
+class RagRequestModel(BaseModel):
+    user: str
+    query: str
+    document_name: str | None = None
 
 
 @app.post('/api/files/upload')
 async def upload_text(data: FileUploadRequest):
     try:
-        # Validate request data
         if not data.filename:
             raise HTTPException(status_code=400, detail="Filename is required")
         if not data.user:
             raise HTTPException(status_code=400, detail="User is required")
 
-        # Process files
         try:
             message = embed_files(
                 user_id=data.user,
                 file_names=data.filename,
                 files_dir=data.fileDirectory
             )
-            return {"response": message}
+            
+            if isinstance(message, Exception):
+                if isinstance(message, FileNotFoundError):
+                    raise HTTPException(status_code=404, detail=str(message))
+                raise HTTPException(status_code=500, detail=str(message))
+                
+            return {"status": "success", "response": message}
             
         except DocumentLoadError as e:
             raise HTTPException(status_code=400, detail=str(e))
@@ -61,6 +70,70 @@ async def upload_text(data: FileUploadRequest):
         raise HTTPException(
             status_code=500, 
             detail="An unexpected error occurred"
+        )
+
+@app.post('/api/rag')
+async def get_rag_response(data: RagRequestModel):
+    """
+    Retrieve RAG responses from ChromaDB
+    """
+    try:
+        # Validate request data
+        if not data.user:
+            raise HTTPException(status_code=400, detail="User is required")
+        if not data.query:
+            raise HTTPException(status_code=400, detail="Query is required")
+
+        try:
+            # Get results from ChromaDB
+            if data.document_name:
+                results = rag_pull_with_filter(
+                    user_id=data.user,
+                    query=data.query,
+                    document_name=data.document_name
+                )
+            else:
+                results = rag_pull(
+                    user_id=data.user,
+                    query=data.query
+                )
+
+            # Check if results are empty
+            if not results:
+                return {
+                    "status": "success",
+                    "message": "No matching documents found",
+                    "results": [],
+                    "count": 0
+                }
+
+            # Format response
+            response = [
+                {
+                    "content": doc.page_content,
+                    "metadata": doc.metadata
+                } for doc in results
+            ]
+            
+            return {
+                "status": "success",
+                "results": response,
+                "count": len(response)
+            }
+            
+        except VectorStoreError as e:
+            raise HTTPException(
+                status_code=503, 
+                detail=f"Vector store error: {str(e)}"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in RAG endpoint: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail="An unexpected error occurred while processing your query"
         )
 
 
