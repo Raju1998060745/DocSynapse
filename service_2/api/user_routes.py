@@ -73,11 +73,17 @@ def embed_files(user_id: str, file_names :list[str] =None, files_dir: str = None
 def chroma_db_init(collection: str, documents: list[Document]):
     try:
         db_path =  os.getenv('DB_PATH') or 'service_2/db/chroma.db' 
-        persistent_client = chromadb.PersistentClient(db_path)
-        collection = persistent_client.get_or_create_collection(collection, embedding_function= OllamaEmbeddings(
-        model="nomic-embed-text"
-    ))
-        collection.add(documents)
+        # persistent_client = chromadb.PersistentClient(db_path)
+        # collection = persistent_client.get_or_create_collection(collection, embedding_function= OllamaEmbeddings(
+        # model="nomic-embed-text"))
+        db = Chroma(
+        persist_directory=db_path,
+        embedding_function=OllamaEmbeddings(model="nomic-embed-text"),
+        collection_name=collection)
+        
+        db.add_documents(documents)
+    
+        
         return True
     except Exception as e:
         raise RuntimeError(f"Failed to Load into Chrom db {str(e)}")

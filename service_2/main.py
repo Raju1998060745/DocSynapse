@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 
-# @app.get("/home")
-# async def index( filename : str):
-#    return {"message": "Hello Worldhi "}
+@app.get("/home")
+async def index( filename : str):
+   return {"message": "Hello Worldhi "}
 
 
 class FileUploadRequest(BaseModel):
@@ -63,7 +63,6 @@ async def upload_text(data: FileUploadRequest):
             detail="An unexpected error occurred"
         )
 
- 
 
  
 # @app.route('/api/messages', methods=['POST'])
