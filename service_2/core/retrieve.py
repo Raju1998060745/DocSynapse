@@ -45,7 +45,7 @@ def chroma_db_retrieve(collection_name: str):
         logger.info(f"Found existing collection: {collection_name}")
         db = Chroma(
         persist_directory=db_path,
-        embedding_function=embeding(),
+        embedding_function=embedding(),
         collection_name=collection_name)
         return db
         
@@ -65,7 +65,7 @@ def chroma_db_embed(collection_name: str):
         # model="nomic-embed-text"))
         db = Chroma(
         persist_directory=db_path,
-        embedding_function=embeding(),
+        embedding_function=embedding(),
         collection_name=collection_name)
         
         return db
