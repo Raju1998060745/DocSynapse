@@ -1,7 +1,7 @@
 
 from service_2.core.process import load_and_split_documents, embeding,process_files
 from service_2.core.exceptions import ChromaDBError
-from service_2.core.retreive import chroma_db_embed,rag_pull_with_filter
+from service_2.core.retreive import chroma_db_embed,rag_pull_with_filter, chrom_db_retrieve
 from service_2.core.models import FileUploadRequest, RagRequestModel
 
 import logging
@@ -22,9 +22,19 @@ def call_to_llm(data: RagRequestModel):
         raise ValueError("No relevant documents found.")
     return results
     
-    
 
-
+def delete_collection(user_id: str, document:str =None):
+    try:
+        collection = chrom_db_retrieve(user_id)
+        if document:
+            collection.delete(
+                where={'source': document}
+            )
+        else:
+            collection.delete( where={'user_id': user_id})
+    except Exception as e:
+        logger.error(f"Error deleting collection: {str(e)}")
+        raise ChromaDBError(f"Failed to delete collection: {str(e)}")
 def embed_files(user_id: str, file_names: list[str] = None, files_dir: str = None) -> dict:
     """
     Load and embed documents into vector store
@@ -45,7 +55,7 @@ def embed_files(user_id: str, file_names: list[str] = None, files_dir: str = Non
             })
             
         # Store in ChromaDB
-        collection = chroma_db_embed(collection=user_id)
+        collection = chroma_db_embed(user_id)
         collection.add_documents(documents)
         
         # Prepare response

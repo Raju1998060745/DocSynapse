@@ -11,9 +11,9 @@ from langchain_ollama import OllamaEmbeddings
 import logging
 
 
-from service_2.api.user_routes import embed_files, call_to_llm
+from service_2.api.user_routes import embed_files, call_to_llm, delete_collection
 from service_2.core.exceptions import DocumentLoadError, DocumentProcessingError, VectorStoreError
-from service_2.core.models import FileUploadRequest, RagRequestModel
+from service_2.core.models import FileUploadRequest, RagRequestModel, CollectionNameRequest
 from service_2 import logger  
 
 logger = logging.getLogger(__name__)
@@ -115,3 +115,22 @@ async def get_rag_response(data: RagRequestModel):
         )
 
 
+@app.post('/api/delete')
+async def delete(data: CollectionNameRequest):
+
+    if not data.user:
+        raise HTTPException(status_code=400, detail="User is required")
+       
+    try:
+        print('1')
+        delete_collection(
+            user_id=data.user,
+            document=data.document_name or None
+        )
+        return {"status": "success", "message": "Collection deleted successfully"}
+    except Exception as e:
+        logger.error(f"Unexpected error in delete_Collection: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"An unexpected error occurred while deleting the collection{str(e)}"
+        )
