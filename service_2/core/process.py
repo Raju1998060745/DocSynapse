@@ -1,15 +1,19 @@
 from langchain_community.document_loaders import S3FileLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
 from langchain.schema.document import Document
-from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
 from langchain_ollama import  OllamaEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from uuid import uuid4
 import os, glob
-from .. import logger
+
+
 from service_2.core.exceptions import DocumentLoadError, DocumentProcessingError, DocumentSplitError
 
+
+
+import logging
+logger = logging.getLogger(__name__) 
 
 def load_document(pdf_files : list ):
     '''
@@ -90,3 +94,30 @@ def embeding():
     )
     return embed
 
+def process_files(files_dir: str = None, file_names: list[str] = None) :
+    try:
+    # Validate inputs
+        files_dir = files_dir or os.getenv('FILE_DOWNLOAD_PATH')
+        if not os.path.exists(files_dir):
+            raise FileNotFoundError(f'Directory not found: {files_dir}')
+            
+        # Process files
+        pdf_files = []
+        missing_files = []
+        
+        for filename in file_names:
+            file_path = os.path.join(files_dir, f"{filename}.pdf")
+            if os.path.exists(file_path):
+                pdf_files.append(file_path)
+            else:
+                missing_files.append(filename)
+                logger.warning(f"File not found: {filename}")
+                
+        if not pdf_files:
+            raise FileNotFoundError(f'No valid files found from: {file_names}')
+        
+        return pdf_files, missing_files
+        
+    except Exception as e:
+        logger.error(f"File processing error: {str(e)}")
+        raise DocumentProcessingError(f"Failed to process list of files: {str(e)}")
