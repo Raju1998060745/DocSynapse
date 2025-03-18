@@ -1,7 +1,7 @@
 from  langchain_chroma import Chroma
 import os
 import chromadb
-from service_2.core.process import embeding
+from service_2.core.process import embedding
 from service_2.core.exceptions import ChromaDBError
 import logging
 logger = logging.getLogger(__name__)
@@ -12,7 +12,7 @@ def rag_pull_with_filter(user_id: str, query: str, document_name: str = None, k:
     Retrieve filtered documents from vector store
     """
     try:
-        collection = chrom_db_retrieve(collection_name=user_id)
+        collection = chroma_db_retrieve(collection_name=user_id)
         filter_dict = {'user_id': user_id}
         if document_name:
             filter_dict['source'] = document_name    
@@ -31,7 +31,7 @@ def rag_pull_with_filter(user_id: str, query: str, document_name: str = None, k:
         logger.error(f"ChromaDB operation failed: {str(e)}")
         raise  # Re-raise the original error without wrapping
 
-def chrom_db_retrieve(collection_name: str):
+def chroma_db_retrieve(collection_name: str):
     """
     Initialize ChromaDB client and get collection
     """

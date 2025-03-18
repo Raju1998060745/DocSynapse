@@ -1,14 +1,14 @@
 
-from service_2.core.process import load_and_split_documents, embeding,process_files
+from service_2.core.process import load_and_split_documents, embedding,process_files
 from service_2.core.exceptions import ChromaDBError
-from service_2.core.retreive import chroma_db_embed,rag_pull_with_filter, chrom_db_retrieve
+from service_2.core.retrieve import chroma_db_embed,rag_pull_with_filter, chroma_db_retrieve
 from service_2.core.models import FileUploadRequest, RagRequestModel
 
 import logging
 logger = logging.getLogger(__name__)
 
 def call_to_llm(data: RagRequestModel):
-    '''TODO: Call chroma as retreiver and then call llm for ans'''
+    '''TODO: Call chroma as retrieve and then call llm for ans'''
 
 
 
@@ -25,7 +25,7 @@ def call_to_llm(data: RagRequestModel):
 
 def delete_collection(user_id: str, document:str =None):
     try:
-        collection = chrom_db_retrieve(user_id)
+        collection = chroma_db_retrieve(user_id)
         if document:
             collection.delete(
                 where={'source': document}
