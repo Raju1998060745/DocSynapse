@@ -1,5 +1,5 @@
 
-from service_2.core.process import load_and_split_documents, embedding,process_files
+from service_2.core.process import load_and_split_documents,process_files
 from service_2.core.exceptions import ChromaDBError
 from service_2.core.retrieve import chroma_db_embed,rag_pull_with_filter, chroma_db_retrieve
 from service_2.core.models import FileUploadRequest, RagRequestModel
@@ -17,9 +17,16 @@ def call_to_llm(data: RagRequestModel):
         query=data.query,
         document_name=data.document_name or None
     )
+
+
+
     if not results:
         logger.info("No relevant documents found.")
         raise ValueError("No relevant documents found.")
+
+    #TODO: Call LLM with results
+
+
     return results
     
 
