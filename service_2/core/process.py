@@ -88,7 +88,7 @@ def split_documents(documents: list[Document]):
         raise DocumentSplitError(f"Failed to SPlit Documents {uuid4()}: {str(e)}")
     
 
-def embedding():
+def custom_embedding():
     embed = OllamaEmbeddings(
         model="nomic-embed-text"
     )

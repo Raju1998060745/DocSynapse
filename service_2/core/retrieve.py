@@ -1,7 +1,7 @@
 from  langchain_chroma import Chroma
 import os
 import chromadb
-from service_2.core.process import embedding
+from service_2.core.process import custom_embedding
 from service_2.core.exceptions import ChromaDBError
 import logging
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ def chroma_db_retrieve(collection_name: str):
         logger.info(f"Found existing collection: {collection_name}")
         db = Chroma(
         persist_directory=db_path,
-        embedding_function=embedding(),
+        embedding_function=custom_embedding(),
         collection_name=collection_name)
         return db
         
@@ -65,7 +65,7 @@ def chroma_db_embed(collection_name: str):
         # model="nomic-embed-text"))
         db = Chroma(
         persist_directory=db_path,
-        embedding_function=embedding(),
+        embedding_function=custom_embedding(),
         collection_name=collection_name)
         
         return db
