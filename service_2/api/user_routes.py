@@ -3,6 +3,11 @@ from service_2.core.process import load_and_split_documents,process_files
 from service_2.core.exceptions import ChromaDBError
 from service_2.core.retrieve import chroma_db_embed,rag_pull_with_filter, chroma_db_retrieve
 from service_2.core.models import FileUploadRequest, RagRequestModel
+from langchain_groq import ChatGroq
+from langchain_core.messages import SystemMessage
+from langchain.prompts import ChatPromptTemplate
+import os
+
 
 import logging
 logger = logging.getLogger(__name__)
@@ -18,16 +23,28 @@ def call_to_llm(data: RagRequestModel):
         document_name=data.document_name or None
     )
 
-
+    text=data.query
 
     if not results:
         logger.info("No relevant documents found.")
         raise ValueError("No relevant documents found.")
 
     #TODO: Call LLM with results
+    messages = [
+        SystemMessage(content="You are an AI Assistant, who is tasked to provide meaningful insights based on the question and retrieved knowledge."),
+        ("human", "Here are the relevant documents: {relevant_docs}"),
+        ("human", "{text}")
+    ]
+    prompt_template = ChatPromptTemplate.from_messages(messages)
+    
+    prompt = prompt_template.invoke({"relevant_docs": results[0].page_content, "text": text})
 
+    model = ChatGroq(temperature=0, groq_api_key=os.getenv('GROQ_API_KEY'), model_name="llama-3.3-70b-versatile")
+    result = model.invoke(prompt)
+    print(result)
 
-    return results
+    return result
+
     
 
 def delete_collection(user_id: str, document:str =None):

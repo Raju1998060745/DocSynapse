@@ -86,17 +86,17 @@ async def get_rag_response(data: RagRequestModel):
             
 
             # Format response
-            response = [
-                {
-                    "content": doc.page_content,
-                    "metadata": doc.metadata
-                } for doc in results
-            ]
+            # response = [
+            #     {
+            #         "content": doc.content,
+            #         "metadata": doc.metadata
+            #     } for doc in results
+            # ]
             
             return {
                 "status": "success",
-                "results": response,
-                "count": len(response)
+                "results": results,
+    
             }
             
         except VectorStoreError as e:

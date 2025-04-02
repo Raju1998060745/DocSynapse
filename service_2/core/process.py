@@ -6,6 +6,7 @@ from langchain_ollama import  OllamaEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from uuid import uuid4
 import os, glob
+from langchain_cohere import CohereEmbeddings
 
 
 from service_2.core.exceptions import DocumentLoadError, DocumentProcessingError, DocumentSplitError
@@ -89,10 +90,12 @@ def split_documents(documents: list[Document]):
     
 
 def custom_embedding():
-    embed = OllamaEmbeddings(
-        model="nomic-embed-text"
+    embeddings = CohereEmbeddings(
+        model="embed-english-v3.0",
+        cohere_api_key=os.getenv('COHERE_API_KEY')
     )
-    return embed
+
+    return embeddings
 
 def process_files(files_dir: str = None, file_names: list[str] = None) :
     try:
