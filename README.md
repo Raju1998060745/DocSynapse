@@ -38,13 +38,13 @@
 
 | Layer       | Tech Stack                             |
 |------------|-----------------------------------------|
-| Frontend   | React / Next.js (with Auth)             |
+| Frontend   | Flask             |
 | Backend    | FastAPI                                 |
 | Storage    | AWS S3 (pluggable provider)             |
-| Vector Store | FAISS / Pinecone / Weaviate           |
+| Vector Store | Chroma                                |
 | LLMs       | GROQ (Mix of models)                    |
-| Database   | PostgreSQL / MongoDB (users)            |
-| Embeddings | OpenAI / BGE / GROQ compatible          |
+| Database   | Sqlite            |
+| Embeddings | Cohere                                  |
 
 ---
 
